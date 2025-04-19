@@ -5,7 +5,6 @@ var isAndroid = UA && UA.indexOf('android') > 0;
 var isIOS = UA && /iphone|ipad|ipod|ios/.test(UA);
 var isMobile = isAndroid || isIOS;
 
-
 let pianoKeys = document.querySelectorAll(".piano-wrap > div");
 pianoKeys.forEach(key => {
     let keyDown = () => {
@@ -17,10 +16,8 @@ pianoKeys.forEach(key => {
     if(isMobile){
         key.addEventListener("touchstart", keyDown);
         key.addEventListener("touchend", keyUp);
-    }else{
-        key.addEventListener("mousedown", keyDown);
-        key.addEventListener("mouseup", keyUp);
     }
+    // 移除PC端的鼠标事件监听
 });
 
 // audio上下文
@@ -77,18 +74,50 @@ Promise.all([
 .then(audioDatas => {
     soundLoaded();
     let pias = document.querySelectorAll("#PianoPanel > .piano-wrap > div");
+    
+    // 键盘键位映射
+    const keyMap = {
+        'y':0, 'u':1, 'i':2, 'o':3, 'p':4,
+        'h':5, 'j':6, 'k':7, 'l':8, ';':9,
+        'n':10, 'm':11, ',':12, '.':13, '/':14
+    };
+
+    // 键盘按下处理
+    document.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
+        if (key in keyMap) {
+            const index = keyMap[key];
+            const pia = pias[index];
+            
+            // 添加样式
+            pia.classList.add("piano-key-down");
+            
+            // 播放音频
+            const audioSource = audioCtx.createBufferSource();
+            audioSource.buffer = audioDatas[index];
+            audioSource.connect(audioCtx.destination);
+            audioSource.start(0);
+            
+            event.preventDefault();
+        }
+    });
+
+    // 键盘释放处理
+    document.addEventListener('keyup', event => {
+        const key = event.key.toLowerCase();
+        if (key in keyMap) {
+            const index = keyMap[key];
+            const pia = pias[index];
+            pia.classList.remove("piano-key-down");
+            event.preventDefault();
+        }
+    });
+
+    // 移动端触摸事件保留
     pias.forEach((pia, index) => {
         pia._index = index;
-        if(isMobile) {
+        if(isMobile){
             pia.addEventListener("touchstart", () => {
-                console.log(index)
-                let audioSource = audioCtx.createBufferSource();
-                audioSource.buffer = audioDatas[index];
-                audioSource.connect(audioCtx.destination);
-                audioSource.start(0);
-            });
-        }else{
-            pia.addEventListener("mousedown", () => {
                 let audioSource = audioCtx.createBufferSource();
                 audioSource.buffer = audioDatas[index];
                 audioSource.connect(audioCtx.destination);
@@ -98,9 +127,6 @@ Promise.all([
     });
 });
 
-
-
-
 // 关闭音频加载中状态
 function soundLoaded() {
     setTimeout(() => {
@@ -108,8 +134,6 @@ function soundLoaded() {
         loadding.setAttribute("style", "display:none;");
     }, 1000);
 }
-
-
 
 document.addEventListener('visibilitychange', function() {
     if(document.hidden) {
